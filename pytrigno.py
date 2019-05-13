@@ -105,7 +105,7 @@ class _BaseTrignoDaq(object):
             l = len(packet)
 
         data = np.asarray(
-            struct.unpack('<'+'f'*self.total_signals*num_samples, packet))
+            struct.unpack('<' + 'f' * self.total_signals * num_samples, packet))
         data = np.transpose(data.reshape((-1, self.total_signals)))
 
         return data
@@ -277,10 +277,10 @@ class TrignoACC(_BaseTrignoDaq):
         self.channels = set(channels)
         self.num_channels = len(channels)
         read_idx = np.zeros(0, dtype=int)
-        for channel in self.channels:s
+        for channel in self.channels:
             read_idx = np.append(read_idx, np.arange(
-                channel*self._signals_per_channel,
-                (channel+1)*self._signals_per_channel))
+                channel * self._signals_per_channel,
+                (channel + 1) * self._signals_per_channel))
 
         self._signals_read_idx = read_idx
 
