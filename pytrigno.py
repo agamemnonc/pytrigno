@@ -1,6 +1,7 @@
 import socket
 import struct
-import numpy
+import numpy as np
+
 
 class _BaseTrignoDaq(object):
     """
@@ -18,8 +19,8 @@ class _BaseTrignoDaq(object):
         Port of TCU data access.
     rate : int
         Sampling rate of the data source.
-    total_channels : int
-        Total number of channels supported by the device.
+    signals_per_channel : int
+        Number of signals per channel.
 
     Attributes
     ----------
@@ -39,14 +40,17 @@ class _BaseTrignoDaq(object):
     BYTES_PER_CHANNEL = 4
     CMD_TERM = '\r\n\r\n'
     CONNECTION_TIMEOUT = 2
+    TOTAL_NUM_CHANNELS = 16
 
-    def __init__(self, host, cmd_port, data_port, total_channels):
+    def __init__(self, host, cmd_port, data_port, signals_per_channel):
         self.host = host
         self.cmd_port = cmd_port
         self.data_port = data_port
-        self.total_channels = total_channels
+        self._signals_per_channel = signals_per_channel
 
-        self._min_recv_size = self.total_channels * self.BYTES_PER_CHANNEL
+        self.total_signals = \
+            self._signals_per_channel * self.TOTAL_NUM_CHANNELS
+        self._min_recv_size = self.total_signals * self.BYTES_PER_CHANNEL
 
         self._initialize()
 
@@ -84,7 +88,7 @@ class _BaseTrignoDaq(object):
 
         Returns
         -------
-        data : ndarray, shape=(total_channels, num_samples)
+        data : ndarray, shape=(total_signals, num_samples)
             Data read from the device. Each channel is a row and each column
             is a point in time.
         """
@@ -100,9 +104,9 @@ class _BaseTrignoDaq(object):
                 raise IOError("Device disconnected.")
             l = len(packet)
 
-        data = numpy.asarray(
-            struct.unpack('<'+'f'*self.total_channels*num_samples, packet))
-        data = numpy.transpose(data.reshape((-1, self.total_channels)))
+        data = np.asarray(
+            struct.unpack('<'+'f'*self.total_signals*num_samples, packet))
+        data = np.transpose(data.reshape((-1, self.total_signals)))
 
         return data
 
@@ -117,7 +121,7 @@ class _BaseTrignoDaq(object):
     def __del__(self):
         try:
             self._comm_socket.close()
-        except:
+        except BaseException:
             pass
 
     def _send_cmd(self, command):
@@ -145,9 +149,8 @@ class TrignoEMG(_BaseTrignoDaq):
 
     Parameters
     ----------
-    channel_range : tuple with 2 ints
-        Sensor channels to use, e.g. (lowchan, highchan) obtains data from
-        channels lowchan through highchan. Each sensor has a single EMG
+    channels : list or tuple
+        Sensor channels to use. Each sensor has a single EMG
         channel.
     samples_per_read : int
         Number of samples per channel to read in each read operation.
@@ -174,13 +177,13 @@ class TrignoEMG(_BaseTrignoDaq):
         units.
     """
 
-    def __init__(self, channel_range, samples_per_read, units='V',
+    def __init__(self, channels, samples_per_read, units='V',
                  host='localhost', cmd_port=50040, data_port=50041):
         super(TrignoEMG, self).__init__(
             host=host, cmd_port=cmd_port, data_port=data_port,
-            total_channels=16)
+            signals_per_channel=1)
 
-        self.channel_range = channel_range
+        self.set_channels(channels)
         self.samples_per_read = samples_per_read
 
         self.rate = 2000
@@ -192,17 +195,18 @@ class TrignoEMG(_BaseTrignoDaq):
             # max range of EMG data is 11 mV
             self.scaler = 1 / 0.011
 
-    def set_channel_range(self, channel_range):
+    def set_channels(self, channels):
         """
-        Sets the number of channels to read from the device.
+        Sets the channels to read from the device.
 
         Parameters
         ----------
-        channel_range : tuple
-            Sensor channels to use (lowchan, highchan).
+        channels : list or tuple
+            Sensor channels to use.
         """
-        self.channel_range = channel_range
-        self.num_channels = channel_range[1] - channel_range[0] + 1
+        self.channels = set(channels)
+        self.num_channels = len(channels)
+        self._signals_read_idx = list(self.channels)
 
     def read(self):
         """
@@ -218,11 +222,11 @@ class TrignoEMG(_BaseTrignoDaq):
             is a point in time.
         """
         data = super(TrignoEMG, self).read(self.samples_per_read)
-        data = data[self.channel_range[0]:self.channel_range[1]+1, :]
+        data = data[self._signals_read_idx, :]
         return self.scaler * data
 
 
-class TrignoAccel(_BaseTrignoDaq):
+class TrignoACC(_BaseTrignoDaq):
     """
     Delsys Trigno wireless EMG system accelerometer data.
 
@@ -230,9 +234,8 @@ class TrignoAccel(_BaseTrignoDaq):
 
     Parameters
     ----------
-    channel_range : tuple with 2 ints
-        Sensor channels to use, e.g. (lowchan, highchan) obtains data from
-        channels lowchan through highchan. Each sensor has three accelerometer
+    channels : list or tuple
+        Sensor channels to use. Each sensor has three accelerometer
         channels.
     samples_per_read : int
         Number of samples per channel to read in each read operation.
@@ -244,29 +247,42 @@ class TrignoAccel(_BaseTrignoDaq):
     data_port : int, optional
         Port of TCU accelerometer data access. By default, 50042 is used, but
         it is configurable through the TCU graphical user interface.
-    """
-    def __init__(self, channel_range, samples_per_read, host='localhost',
-                 cmd_port=50040, data_port=50042):
-        super(TrignoAccel, self).__init__(
-            host=host, cmd_port=cmd_port, data_port=data_port,
-            total_channels=48)
 
-        self.channel_range = channel_range
+    Attributes
+    ----------
+    rate : int
+        Sampling rate in Hz.
+    """
+
+    def __init__(self, channels, samples_per_read, host='localhost',
+                 cmd_port=50040, data_port=50042):
+        super(TrignoACC, self).__init__(
+            host=host, cmd_port=cmd_port, data_port=data_port,
+            signals_per_channel=3)
+
+        self.set_channels(channels)
         self.samples_per_read = samples_per_read
 
         self.rate = 148.1
 
-    def set_channel_range(self, channel_range):
+    def set_channels(self, channels):
         """
-        Sets the number of channels to read from the device.
+        Sets the channels to read from the device.
 
         Parameters
         ----------
-        channel_range : tuple
-            Sensor channels to use (lowchan, highchan).
+        channels : list or tuple
+            Sensor channels to use.
         """
-        self.channel_range = channel_range
-        self.num_channels = channel_range[1] - channel_range[0] + 1
+        self.channels = set(channels)
+        self.num_channels = len(channels)
+        read_idx = np.zeros(0, dtype=int)
+        for channel in self.channels:s
+            read_idx = np.append(read_idx, np.arange(
+                channel*self._signals_per_channel,
+                (channel+1)*self._signals_per_channel))
+
+        self._signals_read_idx = read_idx
 
     def read(self):
         """
@@ -281,6 +297,6 @@ class TrignoAccel(_BaseTrignoDaq):
             Data read from the device. Each channel is a row and each column
             is a point in time.
         """
-        data = super(TrignoAccel, self).read(self.samples_per_read)
-        data = data[self.channel_range[0]:self.channel_range[1]+1, :]
+        data = super(TrignoACC, self).read(self.samples_per_read)
+        data = data[self._signals_read_idx, :]
         return data
