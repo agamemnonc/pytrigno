@@ -60,6 +60,8 @@ class _BaseTrignoDaq(object):
         self._comm_socket = socket.create_connection(
             (self.host, self.cmd_port), 2)
         self._comm_socket.recv(1024)
+         # Version 3.5.1 takes a while to send back the response
+        self._comm_socket.settimeout(4)
 
         # create the data socket
         self._data_socket = socket.create_connection(
