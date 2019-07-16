@@ -275,6 +275,8 @@ class TrignoACC(_BaseTrignoDaq):
     data_port : int, optional
         Port of TCU accelerometer data access. By default, 50042 is used, but
         it is configurable through the TCU graphical user interface.
+    timeout : float, optional
+        Number of seconds before socket returns a timeout exception.
 
     Attributes
     ----------
