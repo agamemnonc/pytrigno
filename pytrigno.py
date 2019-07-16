@@ -21,6 +21,8 @@ class _BaseTrignoDaq(object):
         Sampling rate of the data source.
     signals_per_channel : int
         Number of signals per channel.
+    timeout : float
+        Number of seconds before socket returns a timeout exception.
 
     Attributes
     ----------
@@ -28,8 +30,6 @@ class _BaseTrignoDaq(object):
         Number of bytes per sample per channel. EMG and accelerometer data
     CMD_TERM : str
         Command string termination.
-    CONNECTION_TIMEOUT : int
-        Timeout for initializing connection to TCU (in seconds).
 
     Notes
     -----
@@ -42,10 +42,11 @@ class _BaseTrignoDaq(object):
     CONNECTION_TIMEOUT = 2
     TOTAL_NUM_CHANNELS = 16
 
-    def __init__(self, host, cmd_port, data_port, signals_per_channel):
+    def __init__(self, host, cmd_port, data_port, timeout, signals_per_channel):
         self.host = host
         self.cmd_port = cmd_port
         self.data_port = data_port
+        self.timeout = timeout
         self._signals_per_channel = signals_per_channel
 
         self.total_signals = \
@@ -58,14 +59,14 @@ class _BaseTrignoDaq(object):
 
         # create command socket and consume the servers initial response
         self._comm_socket = socket.create_connection(
-            (self.host, self.cmd_port), 2)
+            (self.host, self.cmd_port), self.timeout)
         self._comm_socket.recv(1024)
          # Version 3.5.1 takes a while to send back the response
         self._comm_socket.settimeout(4)
 
         # create the data socket
         self._data_socket = socket.create_connection(
-            (self.host, self.data_port), 2)
+            (self.host, self.data_port), self.timeout)
 
     def start(self):
         """
@@ -169,6 +170,8 @@ class TrignoEMG(_BaseTrignoDaq):
     data_port : int, optional
         Port of TCU EMG data access. By default, 50041 is used, but it is
         configurable through the TCU graphical user interface.
+    timeout : float, optional
+        Number of seconds before socket returns a timeout exception.
 
     Attributes
     ----------
@@ -180,10 +183,10 @@ class TrignoEMG(_BaseTrignoDaq):
     """
 
     def __init__(self, channels, samples_per_read, units='V',
-                 host='localhost', cmd_port=50040, data_port=50041):
+                 host='localhost', cmd_port=50040, data_port=50041, timeout=5):
         super(TrignoEMG, self).__init__(
             host=host, cmd_port=cmd_port, data_port=data_port,
-            signals_per_channel=1)
+            signals_per_channel=1, timeout=timeout)
 
         self.set_channels(channels)
         self.samples_per_read = samples_per_read
@@ -257,10 +260,10 @@ class TrignoACC(_BaseTrignoDaq):
     """
 
     def __init__(self, channels, samples_per_read, host='localhost',
-                 cmd_port=50040, data_port=50042):
+                 cmd_port=50040, data_port=50042, timeout=5):
         super(TrignoACC, self).__init__(
             host=host, cmd_port=cmd_port, data_port=data_port,
-            signals_per_channel=3)
+            signals_per_channel=3, timeout=timeout)
 
         self.set_channels(channels)
         self.samples_per_read = samples_per_read
