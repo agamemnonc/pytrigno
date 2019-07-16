@@ -32,10 +32,10 @@ class _BaseTrignoDaq(ABC):
     ----------
     BYTES_PER_CHANNEL : int
         Number of bytes per sample per channel. EMG and accelerometer data
-    CMD_TERM : str
-        Command string termination.
     TOTAL_NUM_CHANNELS : int
         Total number of channels.
+    CMD_TERM : str
+        Command string termination.
 
     Notes
     -----
@@ -44,9 +44,8 @@ class _BaseTrignoDaq(ABC):
     """
 
     BYTES_PER_CHANNEL = 4
-    CMD_TERM = '\r\n\r\n'
-    CONNECTION_TIMEOUT = 2
     TOTAL_NUM_CHANNELS = 16
+    CMD_TERM = '\r\n\r\n'
 
     def __init__(self, host, cmd_port, data_port, timeout, signals_per_channel):
         self.host = host
