@@ -138,13 +138,18 @@ class _BaseTrignoDaq(ABC):
         """Tell the device to stop streaming data."""
         self._send_cmd('STOP')
 
+    def close_connection(self):
+        """Closes the connection to the Trigno Control Utility server."""
+        self._comm_socket.close()
+
     def reset(self):
         """Restart the connection to the Trigno Control Utility server."""
+        self.close_connection()
         self._initialize()
 
     def __del__(self):
         try:
-            self._comm_socket.close()
+            self.close_connection()
         except BaseException:
             pass
 
