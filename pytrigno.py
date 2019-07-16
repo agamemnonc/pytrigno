@@ -1,13 +1,17 @@
+from abc import ABC, abstractmethod
 import socket
 import struct
 import numpy as np
 
 
-class _BaseTrignoDaq(object):
+class _BaseTrignoDaq(ABC):
     """
     Delsys Trigno wireless EMG system.
 
     Requires the Trigno Control Utility to be running.
+
+    Warning: This class should not be used directly.
+    Use derived classes instead.
 
     Parameters
     ----------
@@ -68,6 +72,11 @@ class _BaseTrignoDaq(object):
         self._data_socket = socket.create_connection(
             (self.host, self.data_port), self.timeout)
 
+    @property
+    @abstractmethod
+    def _signals_read_idx(self):
+        pass
+
     def start(self):
         """
         Tell the device to begin streaming data.
@@ -76,6 +85,18 @@ class _BaseTrignoDaq(object):
         takes about two seconds to send back the first batch of data.
         """
         self._send_cmd('START')
+
+    def set_channels(self, channels):
+        """
+        Sets the channels to read from the device.
+
+        Parameters
+        ----------
+        channels : list or tuple
+            Sensor channels to use.
+        """
+        self.channels = set(channels)
+        self.num_channels = len(channels)
 
     def read(self, num_samples):
         """
@@ -111,7 +132,7 @@ class _BaseTrignoDaq(object):
             struct.unpack('<' + 'f' * self.total_signals * num_samples, packet))
         data = np.transpose(data.reshape((-1, self.total_signals)))
 
-        return data
+        return data[self._signals_read_idx, :]
 
     def stop(self):
         """Tell the device to stop streaming data."""
@@ -188,17 +209,16 @@ class TrignoEMG(_BaseTrignoDaq):
             host=host, cmd_port=cmd_port, data_port=data_port,
             signals_per_channel=1, timeout=timeout)
 
-        self.set_channels(channels)
         self.samples_per_read = samples_per_read
-
         self.rate = 2000
-
         self.scaler = 1.
         if units == 'mV':
             self.scaler = 1000.
         elif units == 'normalized':
             # max range of EMG data is 11 mV
             self.scaler = 1 / 0.011
+
+        self.set_channels(channels)
 
     def set_channels(self, channels):
         """
@@ -209,8 +229,7 @@ class TrignoEMG(_BaseTrignoDaq):
         channels : list or tuple
             Sensor channels to use.
         """
-        self.channels = set(channels)
-        self.num_channels = len(channels)
+        super(TrignoEMG, self).set_channels(channels=channels)
         self._signals_read_idx = list(self.channels)
 
     def read(self):
@@ -227,7 +246,6 @@ class TrignoEMG(_BaseTrignoDaq):
             is a point in time.
         """
         data = super(TrignoEMG, self).read(self.samples_per_read)
-        data = data[self._signals_read_idx, :]
         return self.scaler * data
 
 
@@ -279,8 +297,7 @@ class TrignoACC(_BaseTrignoDaq):
         channels : list or tuple
             Sensor channels to use.
         """
-        self.channels = set(channels)
-        self.num_channels = len(channels)
+        super(TrignoACC, self).set_channels(channels=channels)
         read_idx = np.zeros(0, dtype=int)
         for channel in self.channels:
             read_idx = np.append(read_idx, np.arange(
@@ -288,20 +305,3 @@ class TrignoACC(_BaseTrignoDaq):
                 (channel + 1) * self._signals_per_channel))
 
         self._signals_read_idx = read_idx
-
-    def read(self):
-        """
-        Request a sample of data from the device.
-
-        This is a blocking method, meaning it returns only once the requested
-        number of samples are available.
-
-        Returns
-        -------
-        data : ndarray, shape=(num_channels, num_samples)
-            Data read from the device. Each channel is a row and each column
-            is a point in time.
-        """
-        data = super(TrignoACC, self).read(self.samples_per_read)
-        data = data[self._signals_read_idx, :]
-        return data
