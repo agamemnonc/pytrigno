@@ -30,6 +30,8 @@ class _BaseTrignoDaq(object):
         Number of bytes per sample per channel. EMG and accelerometer data
     CMD_TERM : str
         Command string termination.
+    TOTAL_NUM_CHANNELS : int
+        Total number of channels.
 
     Notes
     -----
