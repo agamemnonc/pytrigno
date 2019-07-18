@@ -71,11 +71,6 @@ class _BaseTrignoDaq(ABC):
         self._data_socket = socket.create_connection(
             (self.host, self.data_port), self.timeout)
 
-    @property
-    @abstractmethod
-    def _signals_read_idx(self):
-        pass
-
     def start(self):
         """
         Tell the device to begin streaming data.
