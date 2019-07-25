@@ -202,13 +202,14 @@ class TrignoEMG(_BaseTrignoDaq):
         units.
     """
 
-    def __init__(self, channels, samples_per_read, units='V',
+    def __init__(self, channels, samples_per_read, zero_based=False, units='V',
                  host='localhost', cmd_port=50040, data_port=50041, timeout=5):
         super(TrignoEMG, self).__init__(
             host=host, cmd_port=cmd_port, data_port=data_port,
             signals_per_channel=1, timeout=timeout)
 
         self.samples_per_read = samples_per_read
+        self.zero_based = zero_based
         self.rate = 2000
         self.scaler = 1.
         if units == 'mV':
@@ -229,7 +230,10 @@ class TrignoEMG(_BaseTrignoDaq):
             Sensor channels to use.
         """
         super(TrignoEMG, self).set_channels(channels=channels)
-        self._signals_read_idx = list(self.channels)
+        if self.zero_based:
+            self._signals_read_idx = list(self.channels)
+        else:
+            self._signals_read_idx = [channel - 1 for channel in self.channels]
 
     def read(self):
         """
@@ -278,16 +282,18 @@ class TrignoACC(_BaseTrignoDaq):
         Sampling rate in Hz.
     """
 
-    def __init__(self, channels, samples_per_read, host='localhost',
-                 cmd_port=50040, data_port=50042, timeout=5):
+    def __init__(self, channels, samples_per_read, zero_based=False,
+                 host='localhost', cmd_port=50040, data_port=50042, timeout=5):
         super(TrignoACC, self).__init__(
             host=host, cmd_port=cmd_port, data_port=data_port,
             signals_per_channel=3, timeout=timeout)
 
-        self.set_channels(channels)
         self.samples_per_read = samples_per_read
+        self.zero_based = zero_based
 
         self.rate = 148.1
+
+        self.set_channels(channels)
 
     def set_channels(self, channels):
         """
@@ -300,7 +306,12 @@ class TrignoACC(_BaseTrignoDaq):
         """
         super(TrignoACC, self).set_channels(channels=channels)
         read_idx = np.zeros(0, dtype=int)
-        for channel in self.channels:
+        if self.zero_based:
+            channels_ = self.channels
+        else:
+            channels_ = [channel - 1 for channel in self.channels]
+
+        for channel in channels_:
             read_idx = np.append(read_idx, np.arange(
                 channel * self._signals_per_channel,
                 (channel + 1) * self._signals_per_channel))
