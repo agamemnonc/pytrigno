@@ -317,3 +317,19 @@ class TrignoACC(_BaseTrignoDaq):
                 (channel + 1) * self._signals_per_channel))
 
         self._signals_read_idx = read_idx
+
+    def read(self):
+        """
+        Request a sample of data from the device.
+
+        This is a blocking method, meaning it returns only once the requested
+        number of samples are available.
+
+        Returns
+        -------
+        data : ndarray, shape=(num_channels * 3, num_samples)
+            Data read from the device. Each channel is a row and each column
+            is a point in time.
+        """
+        data = super(TrignoACC, self).read(self.samples_per_read)
+        return data
