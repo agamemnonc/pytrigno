@@ -19,6 +19,8 @@ You can test operation of the device by running ``examples/check_trigno.py`` to
 see if things are set up correctly -- if no errors occur, it should be ready to
 go.
 
+Tested with Delsys Trigno Control Utility v. 3.5.1. 
+
 Dependencies
 ------------
 
