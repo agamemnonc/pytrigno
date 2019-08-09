@@ -1,3 +1,5 @@
+This is the Intelligent Sensing fork of  `pytrigno <https://github.com/axopy/pytrigno>`_.
+
 pytrigno
 ========
 
