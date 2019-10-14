@@ -1,7 +1,6 @@
-This is the Intelligent Sensing fork of  `pytrigno <https://github.com/axopy/pytrigno>`_.
+This is the Intelligent Sensing fork of [pytrigno](https://github.com/axopy/pytrigno).
 
-pytrigno
-========
+# pytrigno
 
 ``TrignoEMG`` and ``TrignoAccel`` provide access to data served by Trigno
 Control Utility for the Delsys Trigno wireless EMG system. TCU is Windows-only,
@@ -21,9 +20,21 @@ You can test operation of the device by running ``examples/check_trigno.py`` to
 see if things are set up correctly -- if no errors occur, it should be ready to
 go.
 
-Tested with Delsys Trigno Control Utility v. 3.5.1. The software can be downloaded from the `Delsys support site <https://www.delsys.com/support/software/>`_.
+Tested with Delsys Trigno Control Utility v. 3.5.1. The software can be downloaded from the [Delsys support site](https://www.delsys.com/support/software/).
 
-Dependencies
-------------
+Here is a minimal example that initiates a connection to the server, reads data for 1 second using 200 samples per read (i.e., 100 ms), and then closes the connection. 
 
-- `NumPy <http://www.numpy.org/>`_
+```python
+from pytrigno import TrignoEMG
+t = TrignoEMG(channels=[1,2], samples_per_read=200, zero_based=False, units='V', data_port=50041)
+t.start()
+
+for _ in range(10):
+  t.read()
+  
+t.stop()
+```
+
+## Dependencies
+
+* [NumPy](http://www.numpy.org/)
